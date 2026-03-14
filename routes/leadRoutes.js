@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { createLead, getAllLeads, getLeadById, updateLead, deleteLead } = require('../controllers/leadcontroller');
+const { createLead, getAllLeads, getLeadById, updateLead, deleteLead } = require('../controllers/leadController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { leadValidators } = require('../validators/validators');
 const validate = require('../middleware/validateMiddleware');
