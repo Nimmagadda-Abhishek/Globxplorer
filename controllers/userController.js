@@ -37,8 +37,10 @@ const createAgent = async (req, res, next) => {
  */
 const getAgents = async (req, res, next) => {
   try {
+    const { status } = req.query;
     const filter = { role: 'agent' };
     if (req.user.organizationId) filter.organizationId = req.user.organizationId;
+    if (status) filter.status = status;
 
     const agents = await User.find(filter).select('-password').sort({ createdAt: -1 });
     return sendSuccess(res, 200, 'Agents fetched', { agents, count: agents.length });

@@ -16,6 +16,20 @@ const authValidators = {
       .isLength({ min: 6 })
       .withMessage('Password must be at least 6 characters'),
   ],
+  changePassword: [
+    body('currentPassword').notEmpty().withMessage('Current password is required'),
+    body('newPassword')
+      .isLength({ min: 6 })
+      .withMessage('New password must be at least 6 characters'),
+  ],
+  forgotPassword: [
+    body('email').isEmail().withMessage('Valid email is required'),
+  ],
+  resetPassword: [
+    body('password')
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters'),
+  ],
 };
 
 const userValidators = {
@@ -36,8 +50,8 @@ const userValidators = {
     body('phone').optional().isMobilePhone().withMessage('Valid phone number is required'),
     body('status')
       .optional()
-      .isIn(['active', 'inactive'])
-      .withMessage('Status must be active or inactive'),
+      .isIn(['active', 'inactive', 'pending'])
+      .withMessage('Status must be active, inactive or pending'),
   ],
 };
 

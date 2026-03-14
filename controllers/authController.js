@@ -1,12 +1,89 @@
 const User = require('../models/User');
 const Notification = require('../models/Notification');
 const { generateToken, sendSuccess, createError } = require('../utils/helpers');
+const crypto = require('crypto');
+const sendEmail = require('../utils/sendEmail');
 
 /**
- * @desc  Login user (admin or agent)
- * @route POST /api/auth/login
+ * @desc  Forgot password - send reset email
+ * @route POST /api/auth/forgot-password
  * @access Public
  */
+const forgotPassword = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+
+    if (!user) {
+      return next(createError('There is no user with that email', 404));
+    }
+
+    // Get reset token
+    const resetToken = user.getResetPasswordToken();
+
+    await user.save({ validateBeforeSave: false });
+
+    // Create reset url
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+
+    const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
+
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Password reset token',
+        message,
+      });
+
+      return sendSuccess(res, 200, 'Email sent');
+    } catch (err) {
+      console.error(err);
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+
+      await user.save({ validateBeforeSave: false });
+
+      return next(createError('Email could not be sent', 500));
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc  Reset password
+ * @route PUT /api/auth/reset-password/:resettoken
+ * @access Public
+ */
+const resetPassword = async (req, res, next) => {
+  try {
+    // Get hashed token
+    const resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(req.params.resettoken)
+      .digest('hex');
+
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return next(createError('Invalid or expired token', 400));
+    }
+
+    // Set new password
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    return sendSuccess(res, 200, 'Password reset successful');
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -106,4 +183,29 @@ const register = async (req, res, next) => {
   }
 };
 
-module.exports = { login, register };
+/**
+ * @desc  Change password for current user
+ * @route PUT /api/auth/change-password
+ * @access Private
+ */
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // req.user.id is available from protect middleware
+    const user = await User.findById(req.user.id).select('+password');
+
+    if (!user || !(await user.matchPassword(currentPassword))) {
+      return next(createError('Invalid current password', 401));
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return sendSuccess(res, 200, 'Password changed successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { login, register, changePassword, forgotPassword, resetPassword };
