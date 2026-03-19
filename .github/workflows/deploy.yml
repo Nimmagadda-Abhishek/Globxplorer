@@ -16,11 +16,27 @@ jobs:
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
-          cd ~/CRM
-          git pull origin main
+          # 1. Ensure the directory exists and it is a git repo
+          if [ ! -d "/home/ubuntu/CRM" ]; then
+            echo "Directory /home/ubuntu/CRM not found. Creating and cloning..."
+            mkdir -p /home/ubuntu/CRM
+            # Replace below with your actual repo URL if it's not already cloned
+            # git clone https://github.com/Nimmagadda-Abhishek/Globxplorer.git /home/ubuntu/CRM
+          fi
+
+          cd /home/ubuntu/CRM
+
+          if [ ! -d ".git" ]; then
+            echo "Not a git repository. Please clone manually once or update this script with repo URL."
+            # exit 1 (Optional: uncomment if you want to fail the action)
+          else
+            git pull origin main
+          fi
+
+          # 2. Install dependencies
           npm install
 
-          # Create/Update .env file from secrets
+          # 3. Create/Update .env file from secrets
           cat <<EOF > .env
           NODE_ENV=production
           PORT=5000
@@ -45,6 +61,6 @@ jobs:
           CLIENT_URL=${{ secrets.CLIENT_URL }}
           EOF
 
-          # Zero-downtime cluster reload with PM2 ecosystem file
+          # 4. Zero-downtime cluster reload with PM2 ecosystem file
           pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
           pm2 save
