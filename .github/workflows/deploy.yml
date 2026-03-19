@@ -45,5 +45,6 @@ jobs:
           CLIENT_URL=${{ secrets.CLIENT_URL }}
           EOF
 
-          # Restart the application with PM2
-          pm2 restart all || pm2 start server.js --name "crm-backend"
+          # Zero-downtime cluster reload with PM2 ecosystem file
+          pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+          pm2 save

@@ -78,8 +78,17 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 
 // ─── Health Check ────────────────────────────────────────────────────────────
-app.get('/health', (req, res) => {
-  res.json({ success: true, message: 'CRM API is running', timestamp: new Date() });
+app.get('/health', async (req, res) => {
+  const mongoose = require('mongoose');
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+  
+  res.json({
+    success: true,
+    status: 'UP',
+    database: dbStatus,
+    uptime: `${Math.floor(process.uptime())}s`,
+    timestamp: new Date()
+  });
 });
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
@@ -108,6 +117,11 @@ startFollowUpReminderJob(io);
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀  CRM Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  
+  // Send 'ready' signal to PM2 for zero-downtime cluster restarts
+  if (process.send) {
+    process.send('ready');
+  }
 });
 
 module.exports = { app, server };
