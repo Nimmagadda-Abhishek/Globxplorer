@@ -49,6 +49,7 @@ const leadSchema = new mongoose.Schema(
       default: 'New Lead',
     },
     followUpDate: { type: Date, default: null },
+    budget: { type: Number, default: 0 },
     notes: [noteSchema],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

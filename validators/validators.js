@@ -91,4 +91,27 @@ const messageValidators = {
   ],
 };
 
-module.exports = { authValidators, userValidators, leadValidators, messageValidators };
+const followUpValidators = {
+  createFollowUp: [
+    body('leadId').isMongoId().withMessage('Valid leadId is required'),
+    body('scheduledDate').isISO8601().withMessage('Valid scheduled date is required'),
+    body('status')
+      .optional()
+      .isIn(['Scheduled', 'Completed', 'Cancelled'])
+      .withMessage('Invalid status value'),
+    body('note').optional().trim(),
+  ],
+  updateFollowUp: [
+    body('scheduledDate')
+      .optional()
+      .isISO8601()
+      .withMessage('Valid scheduled date is required'),
+    body('status')
+      .optional()
+      .isIn(['Scheduled', 'Completed', 'Cancelled'])
+      .withMessage('Invalid status value'),
+    body('note').optional().trim(),
+  ],
+};
+
+module.exports = { authValidators, userValidators, leadValidators, messageValidators, followUpValidators };

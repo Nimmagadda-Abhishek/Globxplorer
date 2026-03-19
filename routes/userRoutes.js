@@ -1,16 +1,16 @@
 const express  = require('express');
 const router   = express.Router();
 
-const { createAgent, getAgents, updateAgent, deactivateAgent } = require('../controllers/userController');
+const { createAgent, getAgents, updateAgent, deactivateAgent, getAgentDetails, getReferralEarnings } = require('../controllers/userController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { userValidators }     = require('../validators/validators');
 const validate               = require('../middleware/validateMiddleware');
 
-router.use(protect, authorize('admin')); // All user routes: admin only
-
-router.post('/create-agent', userValidators.createAgent, validate, createAgent);
-router.get('/',              getAgents);
-router.put('/:id',           userValidators.updateAgent, validate, updateAgent);
-router.delete('/:id',        deactivateAgent);
+router.post('/create-agent',      protect, authorize('admin', 'agent'), userValidators.createAgent, validate, createAgent);
+router.get('/',                   protect, authorize('admin', 'agent'), getAgents);
+router.get('/referral-earnings',  protect, authorize('agent'),          getReferralEarnings);
+router.get('/:id/stats',          protect, authorize('admin'),          getAgentDetails);
+router.put('/:id',                protect, authorize('admin'),          userValidators.updateAgent, validate, updateAgent);
+router.delete('/:id',             protect, authorize('admin'),          deactivateAgent);
 
 module.exports = router;

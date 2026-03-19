@@ -1254,3 +1254,68 @@ export default function App() {
 | `GET` | `/reports/dashboard` | Admin | Admin Analytics |
 | `GET` | `/reports/agent-dashboard` | Agent/Admin | Agent Dashboard |
 | `GET` | `/health` | Public | Health check |
+
+---
+
+## 13. 🗓️ FOLLOW-UPS MODULE
+
+### POST `/api/follow-ups`
+**Access:** Admin, Agent
+
+**Request Body:**
+```json
+{
+  "leadId": "65f2...",
+  "scheduledDate": "2025-02-15T10:00:00.000Z",
+  "note": "Client requested call back after 3 PM"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "success": true,
+  "message": "Follow-up scheduled successfully",
+  "followUp": {
+    "_id": "65f8...",
+    "leadId": "65f2...",
+    "scheduledDate": "2025-02-15T10:00:00.000Z",
+    "status": "Scheduled",
+    "note": "Client requested call back after 3 PM"
+  }
+}
+```
+
+---
+
+### GET `/api/follow-ups/lead/:leadId`
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "followUps": [
+    {
+      "_id": "65f8...",
+      "scheduledDate": "2025-02-15T10:00:00.000Z",
+      "status": "Scheduled",
+      "note": "...",
+      "createdBy": { "name": "John Agent" }
+    }
+  ]
+}
+```
+
+---
+
+### PUT `/api/follow-ups/:id`
+**Access:** Admin, Agent
+
+**Request Body:**
+```json
+{
+  "status": "Completed",
+  "note": "Call successful, client is interested"
+}
+```
+
+**Statuses:** `Scheduled` | `Completed` | `Cancelled`

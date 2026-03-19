@@ -1,5 +1,6 @@
 const Lead = require('../models/Lead');
 const User = require('../models/User');
+const FollowUp = require('../models/Follow-up');
 const { sendSuccess } = require('../utils/helpers');
 
 /**
@@ -35,10 +36,10 @@ const getDashboard = async (req, res, next) => {
         ] = await Promise.all([
           Lead.countDocuments(orgFilter),
           Lead.countDocuments({ ...orgFilter, createdAt: { $gte: startOfDay } }),
-          Lead.countDocuments({
+          FollowUp.countDocuments({
             ...orgFilter,
-            followUpDate: { $lt: new Date() },
-            status: { $nin: ['Converted', 'Rejected'] },
+            scheduledDate: { $lt: new Date() },
+            status: 'Scheduled',
           }),
           Lead.countDocuments({ ...orgFilter, status: 'Converted' }),
           User.countDocuments({ ...orgFilter, role: 'agent', status: 'active' }),
@@ -60,16 +61,17 @@ const getDashboard = async (req, res, next) => {
         .populate('assignedAgent', 'name email')
         .select('name email phone status createdAt'),
 
-      // 4. Follow-up Reminders (Upcoming tasks)
-      Lead.find({
+      // 4. Follow-up Reminders (Overdue and Upcoming tasks)
+      FollowUp.find({
         ...orgFilter,
-        followUpDate: { $gte: new Date() },
-        status: { $nin: ['Converted', 'Rejected'] },
+        scheduledDate: { $lt: new Date(startOfDay.getTime() + 7 * 24 * 60 * 60 * 1000) }, // Everything up to next week
+        status: 'Scheduled',
       })
-        .sort({ followUpDate: 1 })
+        .sort({ scheduledDate: 1 })
         .limit(5)
-        .populate('assignedAgent', 'name email')
-        .select('name followUpDate status'),
+        .populate('leadId', 'name status')
+        .populate('createdBy', 'name')
+        .select('leadId scheduledDate status note'),
 
       // 5. Agent Performance (Leads and conversions by agent this month)
       Lead.aggregate([
@@ -137,7 +139,13 @@ const getAgentDashboard = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const orgFilter = req.user.organizationId ? { organizationId: req.user.organizationId } : {};
-    const agentFilter = { ...orgFilter, assignedAgent: userId };
+    
+    // Explicitly convert userId to filter leads
+    const leadFilter = { ...orgFilter, assignedAgent: userId };
+    const myLeads = await Lead.find(leadFilter).select('_id');
+    const myLeadIds = myLeads.map(l => l._id);
+    
+    const followUpFilter = { ...orgFilter, leadId: { $in: myLeadIds } };
 
     const now = new Date();
     const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
@@ -165,13 +173,13 @@ const getAgentDashboard = async (req, res, next) => {
           conversions,
           activeAgents,
         ] = await Promise.all([
-          Lead.countDocuments(agentFilter),
-          Lead.countDocuments({ ...agentFilter, createdAt: { $lte: lastMonthEnd } }),
-          Lead.countDocuments({ ...agentFilter, createdAt: { $gte: startOfDay } }),
-          Lead.countDocuments({ ...agentFilter, createdAt: { $gte: yesterdayStart, $lt: startOfDay } }),
-          Lead.countDocuments({ ...agentFilter, followUpDate: { $lt: new Date() }, status: { $nin: ['Converted', 'Rejected'] } }),
-          Lead.countDocuments({ ...agentFilter, followUpDate: { $lt: startOfDay }, status: { $nin: ['Converted', 'Rejected'] } }),
-          Lead.countDocuments({ ...agentFilter, status: 'Converted' }),
+          Lead.countDocuments(leadFilter),
+          Lead.countDocuments({ ...leadFilter, createdAt: { $lte: lastMonthEnd } }),
+          Lead.countDocuments({ ...leadFilter, createdAt: { $gte: startOfDay } }),
+          Lead.countDocuments({ ...leadFilter, createdAt: { $gte: yesterdayStart, $lt: startOfDay } }),
+          FollowUp.countDocuments({ ...followUpFilter, scheduledDate: { $lt: new Date() }, status: 'Scheduled' }),
+          FollowUp.countDocuments({ ...followUpFilter, scheduledDate: { $lt: startOfDay }, status: 'Scheduled' }),
+          Lead.countDocuments({ ...leadFilter, status: 'Converted' }),
           User.countDocuments({ ...orgFilter, role: 'agent', status: 'active' }),
         ]);
 
@@ -192,23 +200,23 @@ const getAgentDashboard = async (req, res, next) => {
 
       // 2. Lead Pipeline (Distribution of leads across enrollment lifecycle)
       Lead.aggregate([
-        { $match: agentFilter },
+        { $match: leadFilter },
         { $group: { _id: '$status', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
       ]),
 
-      // 3. Priority Focus (Critical agenda - follow-ups for today)
-      Lead.find({
-        ...agentFilter,
-        followUpDate: { $gte: startOfDay, $lt: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000) },
-        status: { $nin: ['Converted', 'Rejected'] },
+      FollowUp.find({
+        ...followUpFilter,
+        scheduledDate: { $lt: new Date(startOfDay.getTime() + 7 * 24 * 60 * 60 * 1000) }, // Look ahead 7 days like admin
+        status: 'Scheduled',
       })
-      .sort({ followUpDate: 1 })
+      .sort({ scheduledDate: 1 })
       .limit(10)
-      .select('name followUpDate status'),
+      .populate('leadId', 'name status')
+      .select('leadId scheduledDate status note'),
 
       // 4. Recent incoming leads
-      Lead.find(agentFilter)
+      Lead.find(leadFilter)
         .sort({ createdAt: -1 })
         .limit(5)
         .select('name status createdAt'),

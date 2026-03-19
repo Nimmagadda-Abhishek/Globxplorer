@@ -1,5 +1,6 @@
 const Document = require('../models/Document');
 const Student  = require('../models/Student');
+const Lead     = require('../models/Lead');
 const { deleteFromCloudinary } = require('../services/cloudinaryService');
 const { createNotification }   = require('../services/notificationService');
 const { sendSuccess, createError } = require('../utils/helpers');
@@ -88,4 +89,51 @@ const deleteDocument = async (req, res, next) => {
   }
 };
 
-module.exports = { uploadDocument, getDocumentsByStudent, deleteDocument };
+/**
+ * @desc  Get all documents (with filtering)
+ * @route GET /api/documents
+ * @access Admin, Agent
+ */
+const getAllDocuments = async (req, res, next) => {
+  try {
+    const { searchTerm } = req.query;
+    let filter = req.user.organizationId ? { organizationId: req.user.organizationId } : {};
+
+    // Core Logic: Filtering for agents (only show documents of students they manage)
+    if (req.user.role === 'agent') {
+      const agentLeads = await Lead.find({
+        $or: [{ assignedAgent: req.user._id }, { createdBy: req.user._id }]
+      }).select('_id');
+      const agentLeadIds = agentLeads.map(l => l._id);
+      
+      const students = await Student.find({ leadId: { $in: agentLeadIds } }).select('_id');
+      const studentIds = students.map(s => s._id);
+      filter.studentId = { $in: studentIds };
+    }
+
+    const docs = await Document.find(filter)
+      .populate({
+        path: 'studentId',
+        populate: { path: 'leadId', select: 'name' }
+      })
+      .populate('uploadedBy', 'name email')
+      .sort({ uploadedAt: -1 });
+
+    // Transform to match frontend expectation: doc.studentId.name
+    const transformedDocs = docs.map(doc => {
+      const docObj = doc.toObject();
+      if (docObj.studentId && docObj.studentId.leadId) {
+        docObj.studentId.name = docObj.studentId.leadId.name;
+      } else if (docObj.studentId) {
+        docObj.studentId.name = 'Unknown Student';
+      }
+      return docObj;
+    });
+
+    return sendSuccess(res, 200, 'Documents fetched', { documents: transformedDocs, count: transformedDocs.length });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { uploadDocument, getDocumentsByStudent, deleteDocument, getAllDocuments };

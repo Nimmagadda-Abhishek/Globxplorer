@@ -20,6 +20,7 @@ const documentRoutes     = require('./routes/documentRoutes');
 const messageRoutes      = require('./routes/messageRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const reportRoutes       = require('./routes/reportRoutes');
+const followUpRoutes     = require('./routes/followUpRoutes');
 
 // Cron job
 const startFollowUpReminderJob = require('./jobs/followupReminderJob');
@@ -32,9 +33,11 @@ const app    = express();
 const server = http.createServer(app);
 
 // ─── Socket.io ──────────────────────────────────────────────────────────────
+const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : '*';
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || '*',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
   },
 });
@@ -69,7 +72,7 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // ─── General Middleware ──────────────────────────────────────────────────────
-app.use(cors({ origin: process.env.CLIENT_URL || '*', credentials: true }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
@@ -88,6 +91,7 @@ app.use('/api/documents',     documentRoutes);
 app.use('/api/messages',      messageRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports',       reportRoutes);
+app.use('/api/follow-ups',   followUpRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 app.use((req, res) => {

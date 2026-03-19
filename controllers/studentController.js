@@ -36,9 +36,24 @@ const createStudent = async (req, res, next) => {
       }
     ).populate('leadId', 'name email phone status');
 
+    // Robustly update lead status to 'Converted'
+    const updatedLead = await Lead.findOneAndUpdate(
+      { _id: leadId, organizationId: req.user.organizationId },
+      { $set: { status: 'Converted' } },
+      { new: true }
+    );
+
+    if (!updatedLead) {
+      // If not found in this org, fallback to direct ID but this shouldn't normally happen
+      await Lead.findByIdAndUpdate(leadId, { status: 'Converted' });
+    }
+
+    // Re-populate student with updated lead status for accurate response
+    const studentWithUpdatedLead = await Student.findById(student._id).populate('leadId', 'name email phone status');
+
     const isNew = student.createdAt.getTime() === student.updatedAt.getTime();
 
-    return sendSuccess(res, isNew ? 201 : 200, isNew ? 'Student profile created' : 'Student profile updated', { student });
+    return sendSuccess(res, isNew ? 201 : 200, isNew ? 'Student profile created' : 'Student profile updated', { student: studentWithUpdatedLead });
   } catch (error) {
     next(error);
   }

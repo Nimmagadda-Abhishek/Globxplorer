@@ -22,8 +22,9 @@ const forgotPassword = async (req, res, next) => {
 
     await user.save({ validateBeforeSave: false });
 
-    // Create reset url
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    // Create reset url (use first origin if multiple are defined)
+    const primaryClientUrl = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0] : '';
+    const resetUrl = `${primaryClientUrl}/reset-password/${resetToken}`;
 
     const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
 
