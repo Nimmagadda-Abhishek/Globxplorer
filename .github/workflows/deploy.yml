@@ -19,9 +19,7 @@ jobs:
           # 1. Ensure the directory exists and it is a git repo
           if [ ! -d "/home/ubuntu/CRM" ]; then
             echo "Directory /home/ubuntu/CRM not found. Creating and cloning..."
-            mkdir -p /home/ubuntu/CRM
-            # Replace below with your actual repo URL if it's not already cloned
-            # git clone https://github.com/Nimmagadda-Abhishek/Globxplorer.git /home/ubuntu/CRM
+            git clone https://github.com/Nimmagadda-Abhishek/Globxplorer.git /home/ubuntu/CRM
           fi
 
           cd /home/ubuntu/CRM
