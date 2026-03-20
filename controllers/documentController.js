@@ -1,7 +1,7 @@
 const Document = require('../models/Document');
 const Student  = require('../models/Student');
 const Lead     = require('../models/Lead');
-const { deleteFromCloudinary } = require('../services/cloudinaryService');
+const { deleteFromS3 } = require('../services/s3Service');
 const { createNotification }   = require('../services/notificationService');
 const { sendSuccess, createError } = require('../utils/helpers');
 
@@ -26,8 +26,8 @@ const uploadDocument = async (req, res, next) => {
     const doc = await Document.create({
       studentId,
       documentType,
-      fileUrl:    req.file.path,          // Cloudinary URL
-      publicId:   req.file.filename,      // Cloudinary public_id
+      fileUrl:    req.file.location,      // S3 Location URL
+      publicId:   req.file.key,           // S3 Key
       uploadedBy: req.user._id,
       organizationId: req.user.organizationId,
     });
@@ -78,8 +78,8 @@ const deleteDocument = async (req, res, next) => {
     const doc = await Document.findById(req.params.id);
     if (!doc) return next(createError('Document not found', 404));
 
-    // Delete from Cloudinary
-    await deleteFromCloudinary(doc.publicId);
+    // Delete from S3
+    await deleteFromS3(doc.publicId);
 
     await doc.deleteOne();
 

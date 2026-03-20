@@ -1,37 +1,18 @@
-const multer  = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('../config/cloudinary');
+const multer = require('multer');
+const multerS3 = require('multer-s3');
+const s3Client = require('../config/s3');
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => {
-    const isPdf = file.mimetype === 'application/pdf';
-    const isImage = file.mimetype.startsWith('image/');
+const storage = multerS3({
+  s3: s3Client,
+  bucket: process.env.AWS_S3_BUCKET_NAME,
+  contentType: multerS3.AUTO_CONTENT_TYPE,
+  key: function (req, file, cb) {
+    const studentId = req.params.studentId || req.body.studentId || 'misc';
     const timestamp = Date.now();
-    const cleanName = file.originalname.split('.')[0].replace(/\s+/g, '_');
-    
-    if (isImage) {
-      return {
-        folder: `crm/documents/${req.params.studentId || 'misc'}`,
-        public_id: `${timestamp}-${cleanName}`,
-        resource_type: 'image',
-      };
-    } else if (isPdf) {
-      // CRITICAL: PDFs must be 'image' type with 'pdf' format to be viewable in browser
-      return {
-        folder: `crm/documents/${req.params.studentId || 'misc'}`,
-        public_id: `${timestamp}-${cleanName}`,
-        resource_type: 'image',
-        format: 'pdf',
-      };
-    } else {
-      // For raw files (doc, docx, xls, etc), keep extension in public_id
-      return {
-        folder: `crm/documents/${req.params.studentId || 'misc'}`,
-        public_id: `${timestamp}-${file.originalname.replace(/\s+/g, '_')}`,
-        resource_type: 'raw',
-      };
-    }
+    const cleanName = file.originalname.replace(/\s+/g, '_');
+    const folder = `crm/documents/${studentId}`;
+    const fullPath = `${folder}/${timestamp}-${cleanName}`;
+    cb(null, fullPath);
   },
 });
 
