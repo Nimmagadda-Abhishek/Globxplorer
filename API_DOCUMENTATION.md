@@ -584,7 +584,7 @@ export const updateStudent  = (id, data) => api.put(`/students/${id}`, data);
     "_id": "65f5...",
     "studentId": "65f4...",
     "documentType": "Passport",
-    "fileUrl": "https://res.cloudinary.com/your-cloud/crm/documents/.../passport.pdf",
+    "fileUrl": "https://your-bucket-name.s3.your-region.amazonaws.com/crm/documents/.../passport.pdf",
     "uploadedBy": "65f0...",
     "uploadedAt": "2025-01-15T10:00:00.000Z"
   }
@@ -603,7 +603,7 @@ export const updateStudent  = (id, data) => api.put(`/students/${id}`, data);
     {
       "_id": "65f5...",
       "documentType": "Passport",
-      "fileUrl": "https://res.cloudinary.com/...",
+      "fileUrl": "https://your-bucket-name.s3.amazonaws.com/...",
       "uploadedBy": { "name": "John Agent", "email": "john@crm.com" },
       "uploadedAt": "2025-01-15T10:00:00.000Z"
     }
@@ -615,7 +615,7 @@ export const updateStudent  = (id, data) => api.put(`/students/${id}`, data);
 
 ### DELETE `/api/documents/:id`
 **Access:** Admin, Agent  
-*(Deletes from Cloudinary AND database)*
+*(Deletes from AWS S3 AND database)*
 
 **Success Response (200):**
 ```json
